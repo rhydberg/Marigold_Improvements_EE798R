@@ -391,19 +391,19 @@ if "__main__" == __name__:
     except Exception as e:
         logging.exception(e)
     
-    for batch in train_loader:
-        images = batch['images'].to(device)
-        complexities = []
+    # for batch in train_loader:
+    #     images = batch['images'].to(device)
+    #     complexities = []
 
-        for image in images:
-            gradient_complexity = calculate_gradient_complexity(image)
-            entropy_complexity = calculate_entropy_complexity(image)
+    #     for image in images:
+    #         gradient_complexity = calculate_gradient_complexity(image)
+    #         entropy_complexity = calculate_entropy_complexity(image)
 
-            complexity = gradient_complexity
-            complexities.append(complexity)
+    #         complexity = gradient_complexity
+    #         complexities.append(complexity)
 
-        denoising_steps = [select_denoising_steps(c) for c in complexities]
+    #     denoising_steps = [select_denoising_steps(c) for c in complexities]
         
-        for image, steps in zip(images, denoising_steps):
-            model.denoise(image, steps) 
+    #     for image, steps in zip(images, denoising_steps):
+    #         model.denoise(image, steps) 
 
