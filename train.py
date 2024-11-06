@@ -54,6 +54,35 @@ from src.util.logging_util import (
 )
 from src.util.slurm_util import get_local_scratch_dir, is_on_slurm
 
+import torch.nn.functional as F
+import numpy as np
+
+def calculate_gradient_complexity(image):
+    gradient = torch.gradient(image)
+    gradient_magnitude = torch.sqrt(gradient[0] ** 2 + gradient[1] ** 2)
+    complexity = torch.mean(gradient_magnitude)
+    return complexity.item()
+
+def calculate_entropy_complexity(image):
+    histogram = torch.histc(image, bins=256, min=0, max=1)
+    histogram = histogram / histogram.sum()
+    entropy = -torch.sum(histogram * torch.log2(histogram + 1e-10))  # avoid log(0)
+    return entropy.item()
+
+
+Tmin = 10   # minimum steps
+Tmax = 50   # maximum steps
+Cmin = 0.1  # observed minimum complexity
+Cmax = 1.0  # observed maximum complexity
+
+alpha = (Tmax - Tmin) / (Cmax - Cmin)
+
+def select_denoising_steps(complexity):
+    return Tmin + alpha * (complexity - Cmin)
+
+
+
+
 if "__main__" == __name__:
     t_start = datetime.now()
     print(f"start at {t_start}")
@@ -361,3 +390,20 @@ if "__main__" == __name__:
         trainer.train(t_end=t_end)
     except Exception as e:
         logging.exception(e)
+    
+    for batch in train_loader:
+        images = batch['images'].to(device)
+        complexities = []
+
+        for image in images:
+            gradient_complexity = calculate_gradient_complexity(image)
+            entropy_complexity = calculate_entropy_complexity(image)
+
+            complexity = gradient_complexity
+            complexities.append(complexity)
+
+        denoising_steps = [select_denoising_steps(c) for c in complexities]
+        
+        for image, steps in zip(images, denoising_steps):
+            model.denoise(image, steps) 
+
